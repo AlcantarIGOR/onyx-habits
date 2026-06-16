@@ -1,0 +1,41 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Habit {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  icon        String     // e.g. "guitar", "chess", "book", "dog"
+  color       String     // hex code e.g. "#A3E635"
+  daysOfWeek  Int[]      // array of active days: 0 (Sun) to 6 (Sat)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  logs        HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  date      DateTime // normalized date (YYYY-MM-DD)
+  completed Boolean  @default(true)
+  createdAt DateTime @default(now())
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+}
+
+model DailyReflection {
+  id         String   @id @default(uuid())
+  date       DateTime @unique // YYYY-MM-DD
+  flowRating Int      // 1 to 5 stars
+  victory    String?  // text of victory
+  lesson     String?  // text of lesson
+  notes      String?  // general journal entry (for guitar, chess, law of attraction progress)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
