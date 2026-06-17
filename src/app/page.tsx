@@ -58,35 +58,120 @@ export default function Dashboard() {
     setLogs(storage.getLogs());
     setStats(storage.getStats());
 
-    // Calculate current routine block based on local time
+    // Calculate current routine block based on local time and date
     const updateRoutineBlock = () => {
       const now = new Date();
       const hours = now.getHours();
       const minutes = now.getMinutes();
       const timeVal = hours * 100 + minutes; // e.g. 15:30 -> 1530
+      const dayOfWeek = now.getDay(); // 0 = Sun, 6 = Sat
 
-      if (timeVal >= 615 && timeVal < 630) {
-        setActiveRoutineBlock({ name: "Despertar & Activación", time: "06:15 AM - 06:30 AM", desc: "Salir de la cama y tomar un vaso de agua." });
-      } else if (timeVal >= 630 && timeVal < 730) {
-        setActiveRoutineBlock({ name: "Paseo con Aika", time: "06:30 AM - 07:30 AM", desc: "Caminata activa matutina para recibir luz natural." });
-      } else if (timeVal >= 730 && timeVal < 800) {
-        setActiveRoutineBlock({ name: "Desayuno & Ducha", time: "07:30 AM - 08:00 AM", desc: "Baño rápido y alimento nutritivo." });
-      } else if (timeVal >= 800 && timeVal < 815) {
-        setActiveRoutineBlock({ name: "Meditación Matutina", time: "08:00 AM - 08:15 AM", desc: "Mindfulness para limpiar la mente." });
-      } else if (timeVal >= 815 && timeVal < 930) {
-        setActiveRoutineBlock({ name: "Bloque de Foco: Estudio", time: "08:15 AM - 09:30 AM", desc: "Estudio teórico de POO. Cero distractores." });
-      } else if (timeVal >= 1030 && timeVal < 1330) {
-        setActiveRoutineBlock({ name: "Curso de POO en el TEC", time: "10:30 AM - 01:30 PM", desc: "Clase en el ITCG. Dominando clases y polimorfismo." });
-      } else if (timeVal >= 1530 && timeVal < 2000) {
-        setActiveRoutineBlock({ name: "Deep Work (Flow State)", time: "03:30 PM - 08:00 PM", desc: "Desarrollo en MoodleSync / ONYX sin interrupciones." });
-      } else if (timeVal >= 2000 && timeVal < 2200) {
-        setActiveRoutineBlock({ name: "Equilibrio Personal", time: "08:00 PM - 10:00 PM", desc: "Guitarra, ajedrez, lectura o meditación." });
-      } else if (timeVal >= 2200 && timeVal < 2230) {
-        setActiveRoutineBlock({ name: "Ocio y Videojuegos", time: "10:00 PM - 10:30 PM", desc: "Minecraft, GTA V o Free Fire sin culpa." });
-      } else if (timeVal >= 2230 && timeVal < 2300) {
-        setActiveRoutineBlock({ name: "Desconexión Digital", time: "10:30 PM - 11:00 PM", desc: "Apagar pantallas y prepararse para dormir." });
+      // Transition week is before Monday June 22, 2026
+      const transitionLimit = new Date("2026-06-22T00:00:00");
+      const isTransitionWeek = now < transitionLimit;
+
+      if (isTransitionWeek) {
+        // --- TRANSITION WEEK ROUTINE ---
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          // Weekend during transition
+          if (timeVal >= 730 && timeVal < 830) {
+            setActiveRoutineBlock({ name: "Despertar & Paseo con Aika 🐶", time: "07:30 AM - 08:30 AM", desc: "Despertar relajado y paseo con Aika." });
+          } else if (timeVal >= 830 && timeVal < 1000) {
+            setActiveRoutineBlock({ name: "Desayuno Familiar", time: "08:30 AM - 10:00 AM", desc: "Desayuno y convivencia familiar." });
+          } else if (timeVal >= 1000 && timeVal < 1300) {
+            setActiveRoutineBlock({ name: "Bloque Libre / Ocio / Hogar", time: "10:00 AM - 01:00 PM", desc: "Limpieza del cuarto o proyectos personales divertidos." });
+          } else if (timeVal >= 1300 && timeVal < 1600) {
+            setActiveRoutineBlock({ name: "Tarde Social / Comida", time: "01:00 PM - 04:00 PM", desc: "Comida y convivencia." });
+          } else if (timeVal >= 1600 && timeVal < 1900) {
+            setActiveRoutineBlock({ name: "Bloque Creativo Opcional", time: "04:00 PM - 07:00 PM", desc: "Programar, tocar guitarra o ver anime sin presiones." });
+          } else if (timeVal >= 1900 && timeVal < 2230) {
+            setActiveRoutineBlock({ name: "Ocio Extendido & Videojuegos", time: "07:00 PM - 10:30 PM", desc: "Sesiones de Minecraft o GTA V con amigos." });
+          } else if (timeVal >= 2230 && timeVal < 2300) {
+            setActiveRoutineBlock({ name: "Desconexión Digital 📵", time: "10:30 PM - 11:00 PM", desc: "Apagar pantallas y prepararse para dormir." });
+          } else {
+            setActiveRoutineBlock({ name: "Tiempo Libre / Descanso", time: "Fuera de bloques", desc: "Descanso y mantenimiento del ciclo de sueño." });
+          }
+        } else {
+          // Weekday during transition
+          if (timeVal >= 730 && timeVal < 745) {
+            setActiveRoutineBlock({ name: "Despertar & Activación", time: "07:30 AM - 07:45 AM", desc: "Despertar y tomar agua." });
+          } else if (timeVal >= 745 && timeVal < 845) {
+            setActiveRoutineBlock({ name: "Paseo con Aika 🐶", time: "07:45 AM - 08:45 AM", desc: "Paseo activo matutino." });
+          } else if (timeVal >= 845 && timeVal < 915) {
+            setActiveRoutineBlock({ name: "Desayuno & Ducha", time: "08:45 AM - 09:15 AM", desc: "Desayuno ligero y ducha." });
+          } else if (timeVal >= 915 && timeVal < 930) {
+            setActiveRoutineBlock({ name: "Meditación de Foco", time: "09:15 AM - 09:30 AM", desc: "Preparación mental para el estudio." });
+          } else if (timeVal >= 930 && timeVal < 1100) {
+            setActiveRoutineBlock({ name: "Bloque de Estudio Matutino", time: "09:30 AM - 11:00 AM", desc: "Estudio de POO sin celular." });
+          } else if (timeVal >= 1100 && timeVal < 1330) {
+            setActiveRoutineBlock({ name: "Tiempo Libre / Pendientes", time: "11:00 AM - 01:30 PM", desc: "Ayudar a tu papá o pendientes generales." });
+          } else if (timeVal >= 1330 && timeVal < 1500) {
+            setActiveRoutineBlock({ name: "Comida & Descanso", time: "01:30 PM - 03:00 PM", desc: "Comer y descansar escuchando música." });
+          } else if (timeVal >= 1500 && timeVal < 1930) {
+            setActiveRoutineBlock({ name: "Deep Work: MoodleSync & ONYX", time: "03:00 PM - 07:30 PM", desc: "Programación enfocada y estado de flow." });
+          } else if (timeVal >= 1930 && timeVal < 2130) {
+            setActiveRoutineBlock({ name: "Equilibrio Personal", time: "07:30 PM - 09:30 PM", desc: "Guitarra, ajedrez, lectura o meditación." });
+          } else if (timeVal >= 2130 && timeVal < 2300) {
+            setActiveRoutineBlock({ name: "Ocio & Videojuegos", time: "09:30 PM - 11:00 PM", desc: "Minecraft, GTA V o Free Fire." });
+          } else if (timeVal >= 2300 && timeVal < 2330) {
+            setActiveRoutineBlock({ name: "Desconexión Digital 📵", time: "11:00 PM - 11:30 PM", desc: "Apagar pantallas y relajación." });
+          } else {
+            setActiveRoutineBlock({ name: "Tiempo Libre / Descanso", time: "Fuera de bloques", desc: "Mantenimiento del ciclo de sueño." });
+          }
+        }
       } else {
-        setActiveRoutineBlock({ name: "Tiempo Flexible / Descanso", time: "Fuera de bloques", desc: "Mantenimiento del ciclo de sueño o tiempo libre." });
+        // --- REGULAR VACATION WEEK ROUTINE (WITH TEC) ---
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          // Weekend
+          if (timeVal >= 730 && timeVal < 830) {
+            setActiveRoutineBlock({ name: "Despertar & Paseo con Aika 🐶", time: "07:30 AM - 08:30 AM", desc: "Despertar relajado y paseo con Aika." });
+          } else if (timeVal >= 830 && timeVal < 1000) {
+            setActiveRoutineBlock({ name: "Desayuno Familiar", time: "08:30 AM - 10:00 AM", desc: "Desayuno y convivencia familiar." });
+          } else if (timeVal >= 1000 && timeVal < 1300) {
+            setActiveRoutineBlock({ name: "Bloque Libre / Ocio / Hogar", time: "10:00 AM - 01:00 PM", desc: "Limpieza del cuarto o proyectos personales divertidos." });
+          } else if (timeVal >= 1300 && timeVal < 1600) {
+            setActiveRoutineBlock({ name: "Tarde Social / Comida", time: "01:00 PM - 04:00 PM", desc: "Comida y convivencia." });
+          } else if (timeVal >= 1600 && timeVal < 1900) {
+            setActiveRoutineBlock({ name: "Bloque Creativo Opcional", time: "04:00 PM - 07:00 PM", desc: "Programar, tocar guitarra o ver anime sin presiones." });
+          } else if (timeVal >= 1900 && timeVal < 2230) {
+            setActiveRoutineBlock({ name: "Ocio Extendido & Videojuegos", time: "07:00 PM - 10:30 PM", desc: "Sesiones de Minecraft o GTA V con amigos." });
+          } else if (timeVal >= 2230 && timeVal < 2300) {
+            setActiveRoutineBlock({ name: "Desconexión Digital 📵", time: "10:30 PM - 11:00 PM", desc: "Apagar pantallas y prepararse para dormir." });
+          } else {
+            setActiveRoutineBlock({ name: "Tiempo Libre / Descanso", time: "Fuera de bloques", desc: "Descanso y mantenimiento del ciclo de sueño." });
+          }
+        } else {
+          // Weekday
+          if (timeVal >= 615 && timeVal < 630) {
+            setActiveRoutineBlock({ name: "Despertar & Activación", time: "06:15 AM - 06:30 AM", desc: "Salir de la cama y tomar un vaso de agua." });
+          } else if (timeVal >= 630 && timeVal < 730) {
+            setActiveRoutineBlock({ name: "Paseo con Aika 🐶", time: "06:30 AM - 07:30 AM", desc: "Caminata activa matutina para recibir luz natural." });
+          } else if (timeVal >= 730 && timeVal < 800) {
+            setActiveRoutineBlock({ name: "Desayuno & Ducha", time: "07:30 AM - 08:00 AM", desc: "Baño rápido y alimento nutritivo." });
+          } else if (timeVal >= 800 && timeVal < 815) {
+            setActiveRoutineBlock({ name: "Meditación Matutina", time: "08:00 AM - 08:15 AM", desc: "Mindfulness para limpiar la mente." });
+          } else if (timeVal >= 815 && timeVal < 930) {
+            setActiveRoutineBlock({ name: "Bloque de Foco: Estudio", time: "08:15 AM - 09:30 AM", desc: "Estudio teórico de POO. Cero distractores." });
+          } else if (timeVal >= 930 && timeVal < 1000) {
+            setActiveRoutineBlock({ name: "Preparación & Salida", time: "09:30 AM - 10:00 AM", desc: "Alistar mochila y tomar el camión al TEC." });
+          } else if (timeVal >= 1030 && timeVal < 1330) {
+            setActiveRoutineBlock({ name: "Curso de POO en el TEC 🏫", time: "10:30 AM - 01:30 PM", desc: "Clase en el ITCG. Dominando clases y polimorfismo." });
+          } else if (timeVal >= 1330 && timeVal < 1400) {
+            setActiveRoutineBlock({ name: "Regreso a Casa", time: "01:30 PM - 02:00 PM", desc: "Traslado de regreso." });
+          } else if (timeVal >= 1400 && timeVal < 1530) {
+            setActiveRoutineBlock({ name: "Comer & Desconexión", time: "02:00 PM - 03:30 PM", desc: "Almuerzo familiar y descanso escuchando música." });
+          } else if (timeVal >= 1530 && timeVal < 2000) {
+            setActiveRoutineBlock({ name: "Deep Work (Flow State)", time: "03:30 PM - 08:00 PM", desc: "Desarrollo en MoodleSync / ONYX sin interrupciones." });
+          } else if (timeVal >= 2000 && timeVal < 2200) {
+            setActiveRoutineBlock({ name: "Equilibrio Personal", time: "08:00 PM - 10:00 PM", desc: "Guitarra, ajedrez, lectura o meditación." });
+          } else if (timeVal >= 2200 && timeVal < 2230) {
+            setActiveRoutineBlock({ name: "Ocio y Videojuegos", time: "10:00 PM - 10:30 PM", desc: "Minecraft, GTA V o Free Fire sin culpa." });
+          } else if (timeVal >= 2230 && timeVal < 2300) {
+            setActiveRoutineBlock({ name: "Desconexión Digital 📵", time: "10:30 PM - 11:00 PM", desc: "Apagar pantallas y prepararse para dormir." });
+          } else {
+            setActiveRoutineBlock({ name: "Tiempo Libre / Descanso", time: "Fuera de bloques", desc: "Mantenimiento del ciclo de sueño o tiempo libre." });
+          }
+        }
       }
     };
 
