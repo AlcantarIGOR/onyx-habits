@@ -4,6 +4,7 @@ export interface Habit {
   description: string;
   icon: string;
   color: string;
+  type: "good" | "bad"; // good = hábito positivo, bad = hábito a evitar
   daysOfWeek: number[]; // 0 (Sun) to 6 (Sat)
   createdAt: string;
 }
@@ -13,6 +14,22 @@ export interface HabitLog {
   habitId: string;
   date: string; // YYYY-MM-DD
   completed: boolean;
+}
+
+export interface Task {
+  id: string;
+  text: string;
+  completed: boolean;
+  priority: "high" | "medium" | "low";
+  date: string; // YYYY-MM-DD
+  createdAt: string;
+}
+
+export interface StickyNote {
+  id: string;
+  content: string;
+  color: string; // hex color for accent
+  createdAt: string;
 }
 
 export interface DailyReflection {
@@ -28,10 +45,11 @@ const DEFAULT_HABITS: Habit[] = [
   {
     id: "1",
     name: "Despertar temprano",
-    description: "Despertar a las 6:15 AM (Vacaciones) / 7:30 AM (Transición)",
+    description: "Levantarse temprano para empezar bien el día",
     icon: "sunrise",
     color: "#A3E635",
-    daysOfWeek: [1, 2, 3, 4, 5, 6, 0], // Todos los días
+    type: "good",
+    daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
     createdAt: new Date().toISOString(),
   },
   {
@@ -39,61 +57,38 @@ const DEFAULT_HABITS: Habit[] = [
     name: "Pasear a Aika",
     description: "Caminata de 1 hora por la mañana con Aika",
     icon: "dog",
-    color: "#38BDF8", // Celeste
+    color: "#38BDF8",
+    type: "good",
     daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
     createdAt: new Date().toISOString(),
   },
   {
     id: "3",
-    name: "Meditación de Foco",
-    description: "15 minutos de respiración para entrenar la concentración",
+    name: "Tomar 2L de agua",
+    description: "Beber al menos 2 litros de agua durante el día",
     icon: "brain",
-    color: "#A78BFA", // Violeta
-    daysOfWeek: [1, 2, 3, 4, 5], // Lun-Vie
+    color: "#38BDF8",
+    type: "good",
+    daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
     createdAt: new Date().toISOString(),
   },
   {
     id: "4",
-    name: "Bloque Foco Matutino",
-    description: "Estudio sin distracciones ni celular (8:15 AM - 9:30 AM)",
-    icon: "target",
-    color: "#F43F5E", // Rojo/Rosa
+    name: "Meditación",
+    description: "15 minutos de respiración y enfoque",
+    icon: "brain",
+    color: "#A78BFA",
+    type: "good",
     daysOfWeek: [1, 2, 3, 4, 5],
     createdAt: new Date().toISOString(),
   },
   {
     id: "5",
-    name: "Curso POO (TEC)",
-    description: "Asistir y participar activamente (10:30 AM - 1:30 PM)",
-    icon: "school",
-    color: "#F59E0B", // Ámbar
-    daysOfWeek: [1, 2, 3, 4, 5],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "6",
-    name: "Deep Work (Flow State)",
-    description: "Programar MoodleSync / ONYX sin celular (3:30 PM - 8:00 PM)",
-    icon: "zap",
-    color: "#2563EB", // Azul
-    daysOfWeek: [1, 2, 3, 4, 5],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "7",
-    name: "Equilibrio Personal",
-    description: "Guitarra, ajedrez, lectura o meditación (8:00 PM - 10:00 PM)",
-    icon: "guitar",
-    color: "#10B981", // Esmeralda
-    daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "8",
-    name: "Desconexión Digital",
-    description: "Apagar pantallas y alejar teléfono (10:30 PM / 11:00 PM)",
-    icon: "moon",
-    color: "#EC4899", // Rosa
+    name: "No fumar hoy",
+    description: "Mantenerme libre de humo todo el día",
+    icon: "target",
+    color: "#F43F5E",
+    type: "bad",
     daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
     createdAt: new Date().toISOString(),
   },
@@ -132,6 +127,7 @@ export const storage = {
       description: habit.description,
       icon: habit.icon,
       color: habit.color,
+      type: habit.type || "good",
       daysOfWeek: habit.daysOfWeek,
       createdAt: isNew ? new Date().toISOString() : (habits.find(h => h.id === habit.id)?.createdAt || new Date().toISOString()),
     };
@@ -281,5 +277,93 @@ export const storage = {
       completionRate,
       totalHabits: habits.length,
     };
-  }
+  },
+
+  // ==================== TASKS ====================
+  getTasks(date?: string): Task[] {
+    const tasks = getStorageItem<Task[]>("personal_tasks", []);
+    if (date) return tasks.filter(t => t.date === date);
+    return tasks;
+  },
+
+  saveTask(task: Omit<Task, "id" | "createdAt"> & { id?: string }): Task {
+    const tasks = this.getTasks();
+    const isNew = !task.id;
+    const newTask: Task = {
+      id: task.id || Math.random().toString(36).substring(2, 9),
+      text: task.text,
+      completed: task.completed,
+      priority: task.priority,
+      date: task.date,
+      createdAt: isNew ? new Date().toISOString() : (tasks.find(t => t.id === task.id)?.createdAt || new Date().toISOString()),
+    };
+
+    if (isNew) {
+      tasks.push(newTask);
+    } else {
+      const idx = tasks.findIndex(t => t.id === task.id);
+      if (idx !== -1) tasks[idx] = newTask;
+    }
+
+    setStorageItem("personal_tasks", tasks);
+    return newTask;
+  },
+
+  toggleTask(id: string): void {
+    const tasks = this.getTasks();
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx !== -1) {
+      tasks[idx].completed = !tasks[idx].completed;
+      setStorageItem("personal_tasks", tasks);
+    }
+  },
+
+  deleteTask(id: string): void {
+    const tasks = this.getTasks().filter(t => t.id !== id);
+    setStorageItem("personal_tasks", tasks);
+  },
+
+  // ==================== STICKY NOTES ====================
+  getStickyNotes(): StickyNote[] {
+    return getStorageItem<StickyNote[]>("personal_stickynotes", [
+      {
+        id: "default_1",
+        content: "El éxito es la suma de pequeños esfuerzos repetidos día tras día.",
+        color: "#A78BFA",
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "default_2",
+        content: "No cuentes los días, haz que los días cuenten. 💪",
+        color: "#38BDF8",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  },
+
+  saveStickyNote(note: Omit<StickyNote, "id" | "createdAt"> & { id?: string }): StickyNote {
+    const notes = this.getStickyNotes();
+    const isNew = !note.id;
+    const newNote: StickyNote = {
+      id: note.id || Math.random().toString(36).substring(2, 9),
+      content: note.content,
+      color: note.color,
+      createdAt: isNew ? new Date().toISOString() : (notes.find(n => n.id === note.id)?.createdAt || new Date().toISOString()),
+    };
+
+    if (isNew) {
+      notes.push(newNote);
+    } else {
+      const idx = notes.findIndex(n => n.id === note.id);
+      if (idx !== -1) notes[idx] = newNote;
+    }
+
+    setStorageItem("personal_stickynotes", notes);
+    return newNote;
+  },
+
+  deleteStickyNote(id: string): void {
+    const notes = this.getStickyNotes().filter(n => n.id !== id);
+    setStorageItem("personal_stickynotes", notes);
+  },
 };

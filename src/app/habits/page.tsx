@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { ShieldCheck, ShieldAlert } from "lucide-react";
+
 const ICONS = ["sunrise", "dog", "brain", "target", "school", "zap", "guitar", "moon", "chess"];
 const COLORS = ["#A3E635", "#38BDF8", "#A78BFA", "#F43F5E", "#F59E0B", "#2563EB", "#10B981", "#EC4899", "#E2E8F0"];
 const DAYS = [
@@ -66,6 +68,7 @@ export default function HabitsPage() {
   const [icon, setIcon] = useState("brain");
   const [color, setColor] = useState("#A3E635");
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [habitType, setHabitType] = useState<"good" | "bad">("good");
 
   useEffect(() => {
     setMounted(true);
@@ -82,6 +85,7 @@ export default function HabitsPage() {
     setIcon("brain");
     setColor("#A3E635");
     setDaysOfWeek([1, 2, 3, 4, 5]);
+    setHabitType("good");
     setIsModalOpen(true);
   };
 
@@ -92,6 +96,7 @@ export default function HabitsPage() {
     setIcon(habit.icon);
     setColor(habit.color);
     setDaysOfWeek(habit.daysOfWeek);
+    setHabitType(habit.type || "good");
     setIsModalOpen(true);
   };
 
@@ -105,6 +110,7 @@ export default function HabitsPage() {
       description,
       icon,
       color,
+      type: habitType,
       daysOfWeek,
     });
 
@@ -332,6 +338,43 @@ export default function HabitsPage() {
                     placeholder="Ej. Tocar acordes básicos durante 20 minutos"
                     className="w-full bg-background-dark border border-border-dark rounded-xl px-4 py-3 text-sm focus:border-primary focus:outline-none transition"
                   />
+                </div>
+
+                {/* Habit Type Selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-mono text-text-muted uppercase">Tipo de Hábito</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setHabitType("good")}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                        habitType === "good"
+                          ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400"
+                          : "bg-background-dark border-border-dark text-text-muted hover:border-border-dark/60"
+                      }`}
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      Hábito Positivo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHabitType("bad")}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                        habitType === "bad"
+                          ? "bg-rose-500/10 border-rose-500/40 text-rose-400"
+                          : "bg-background-dark border-border-dark text-text-muted hover:border-border-dark/60"
+                      }`}
+                    >
+                      <ShieldAlert className="h-4 w-4" />
+                      Hábito a Evitar
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-text-muted">
+                    {habitType === "good" 
+                      ? "Se marca como completado cuando lo realizas exitosamente."
+                      : "Se marca como éxito cuando logras evitarlo durante el día."
+                    }
+                  </p>
                 </div>
 
                 {/* Icon Selector */}
