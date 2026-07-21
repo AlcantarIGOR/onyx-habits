@@ -10,9 +10,10 @@ model Habit {
   id          String     @id @default(uuid())
   name        String
   description String?
-  icon        String     // e.g. "guitar", "chess", "book", "dog"
-  color       String     // hex code e.g. "#A3E635"
-  daysOfWeek  Int[]      // array of active days: 0 (Sun) to 6 (Sat)
+  icon        String     
+  color       String     
+  type        String     @default("good") // "good" | "bad"
+  daysOfWeek  Int[]      
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   logs        HabitLog[]
@@ -21,7 +22,7 @@ model Habit {
 model HabitLog {
   id        String   @id @default(uuid())
   habitId   String
-  date      DateTime // normalized date (YYYY-MM-DD)
+  date      String   // Format YYYY-MM-DD
   completed Boolean  @default(true)
   createdAt DateTime @default(now())
   habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
@@ -29,13 +30,29 @@ model HabitLog {
   @@unique([habitId, date])
 }
 
+model Task {
+  id        String   @id @default(uuid())
+  text      String
+  completed Boolean  @default(false)
+  priority  String   // "high", "medium", "low"
+  date      String   // Format YYYY-MM-DD
+  createdAt DateTime @default(now())
+}
+
+model StickyNote {
+  id        String   @id @default(uuid())
+  content   String
+  color     String
+  createdAt DateTime @default(now())
+}
+
 model DailyReflection {
   id         String   @id @default(uuid())
-  date       DateTime @unique // YYYY-MM-DD
-  flowRating Int      // 1 to 5 stars
-  victory    String?  // text of victory
-  lesson     String?  // text of lesson
-  notes      String?  // general journal entry (for guitar, chess, law of attraction progress)
+  date       String   @unique // Format YYYY-MM-DD
+  flowRating Int      
+  victory    String?  
+  lesson     String?  
+  notes      String?  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }

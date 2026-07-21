@@ -3,7 +3,7 @@
 import React, { useState, useEffect, KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { storage, StickyNote } from "@/lib/storage";
+import { StickyNote } from "@/lib/storage";
 
 const COLORS = [
   "#8B9FCA", // periwinkle
@@ -17,20 +17,54 @@ export function StickyNotes() {
   const [notes, setNotes] = useState<StickyNote[]>([]);
   const [newNoteContent, setNewNoteContent] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [loading, setLoading] = useState(true);
+
+  const loadNotes = async () => {
+    try {
+      const res = await fetch("/api/notes");
+      if (res.ok) {
+        setNotes(await res.json());
+      }
+    } catch (err) {
+      console.error("Error loading notes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadedNotes = storage.getStickyNotes();
-    setNotes(loadedNotes);
+    loadNotes();
   }, []);
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!newNoteContent.trim()) return;
-    const newNote = storage.saveStickyNote({
+
+    // Optimistic add
+    const tempNote: StickyNote = {
+      id: "temp",
       content: newNoteContent.trim(),
       color: selectedColor,
-    });
-    setNotes((prev) => [newNote, ...prev]);
+      createdAt: new Date().toISOString(),
+    };
+    setNotes((prev) => [tempNote, ...prev]);
     setNewNoteContent("");
+
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: tempNote.content,
+          color: selectedColor,
+        }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setNotes((prev) => prev.map((n) => (n.id === "temp" ? saved : n)));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -40,53 +74,63 @@ export function StickyNotes() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    storage.deleteStickyNote(id);
+  const handleDelete = async (id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await fetch(`/api/notes?id=${id}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const displayNotes = notes.slice(0, 5);
 
   return (
     <div className="flex flex-col w-full gap-4">
-      <div className="flex flex-col gap-2.5">
-        <AnimatePresence initial={false}>
-          {displayNotes.map((note) => (
-            <motion.div
-              key={note.id}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="group relative flex items-start px-4 py-3.5 bg-card-dark/50 rounded-xl overflow-hidden"
-            >
-              {/* Left accent */}
-              <div
-                className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full"
-                style={{ backgroundColor: `${note.color}60` }}
-              />
-              
-              <p className="pl-1 pr-6 text-[13px] italic text-foreground/60 w-full break-words leading-relaxed">
-                &ldquo;{note.content}&rdquo;
-              </p>
-
-              <button
-                onClick={() => handleDelete(note.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 p-1 text-text-muted hover:text-foreground/60 rounded-md"
-                aria-label="Eliminar nota"
+      {loading ? (
+        <div className="py-8 text-center text-text-muted text-xs font-mono">Cargando notas...</div>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          <AnimatePresence initial={false}>
+            {displayNotes.map((note) => (
+              <motion.div
+                key={note.id}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="group relative flex items-start px-4 py-3.5 bg-card-dark/50 rounded-xl overflow-hidden"
               >
-                <X className="w-3 h-3" />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        
-        {displayNotes.length === 0 && (
-          <p className="text-[13px] text-text-muted py-10 text-center">
-            Escribe una frase motivacional o nota personal abajo.
-          </p>
-        )}
-      </div>
+                {/* Left accent */}
+                <div
+                  className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full"
+                  style={{ backgroundColor: `${note.color}60` }}
+                />
+                
+                <p className="pl-1 pr-6 text-[13px] italic text-foreground/60 w-full break-words leading-relaxed">
+                  &ldquo;{note.content}&rdquo;
+                </p>
+
+                <button
+                  onClick={() => handleDelete(note.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 p-1 text-text-muted hover:text-foreground/60 rounded-md"
+                  aria-label="Eliminar nota"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          
+          {displayNotes.length === 0 && (
+            <p className="text-[13px] text-text-muted py-10 text-center">
+              Escribe una frase motivacional o nota personal abajo.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Add note input */}
       <div className="flex flex-col gap-2.5 px-4 py-3.5 bg-card-dark/50 rounded-xl">
