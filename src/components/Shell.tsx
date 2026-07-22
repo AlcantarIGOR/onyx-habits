@@ -19,6 +19,10 @@ export default function Shell({ children }: ShellProps) {
     { name: "Bitácora", href: "/journal", icon: BookOpen },
   ];
 
+  if (pathname === "/login") {
+    return <main className="min-h-screen bg-background-dark text-foreground">{children}</main>;
+  }
+
   return (
     <div className="flex min-h-screen bg-background-dark text-foreground">
       {/* Sidebar - Desktop */}
