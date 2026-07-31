@@ -307,7 +307,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-10">
       {/* Greeting & Quick Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
         <div className="space-y-1">
@@ -331,7 +331,7 @@ export default function Dashboard() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 p-1 bg-card-dark/50 rounded-xl w-fit">
+      <div className="grid grid-cols-4 sm:flex gap-1 p-1 bg-card-dark/50 rounded-xl w-full sm:w-fit">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           const Icon = tab.icon;
@@ -339,7 +339,7 @@ export default function Dashboard() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 ${
+              className={`relative flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-[13px] font-medium transition-all duration-200 ${
                 isActive
                   ? "text-foreground"
                   : "text-text-muted hover:text-foreground/60"
@@ -353,8 +353,8 @@ export default function Dashboard() {
                   style={{ zIndex: -1 }}
                 />
               )}
-              <Icon className="h-4 w-4" />
-              {tab.label}
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span className="truncate">{tab.label}</span>
             </button>
           );
         })}

@@ -84,7 +84,7 @@ export default function Shell({ children }: ShellProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6 md:p-10 pb-24 md:pb-10 max-w-3xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-6 md:p-10 pb-20 sm:pb-24 md:pb-10 max-w-3xl mx-auto w-full">
           {children}
         </main>
       </div>
