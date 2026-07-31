@@ -7,20 +7,12 @@ import {
   Trash2,
   Edit3,
   X,
-  Sunrise,
-  Dog,
-  Brain,
-  Target,
-  School,
-  Music,
-  Moon,
-  Award,
-  Calendar,
   Check,
   ShieldCheck,
   ShieldAlert,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import IconMapper from "@/components/IconMapper";
 
 const ICONS = ["sunrise", "dog", "brain", "target", "school", "zap", "guitar", "moon", "chess"];
 const COLORS = ["#8B9FCA", "#7EC89B", "#D4A574", "#C4787E", "#9B8EC4", "#E2E8F0"];
@@ -34,17 +26,7 @@ const DAYS = [
   { label: "Sá", value: 6 },
 ];
 
-const IconMapper = ({ name, className }: { name: string; className?: string }) => {
-  const icons: Record<string, React.ComponentType<{ className?: string }>> = {
-    sunrise: Sunrise, dog: Dog, brain: Brain, target: Target,
-    school: School, zap: Sunrise, guitar: Music, moon: Moon, chess: Award,
-  };
-  const IconComponent = icons[name] || Calendar;
-  return <IconComponent className={className} />;
-};
-
 export default function HabitsPage() {
-  const [mounted, setMounted] = useState(false);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,8 +41,7 @@ export default function HabitsPage() {
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
   const [habitType, setHabitType] = useState<"good" | "bad">("good");
 
-  const loadData = async () => {
-    setLoading(true);
+  const refetchData = async () => {
     try {
       const [habitsRes, logsRes] = await Promise.all([
         fetch("/api/habits"),
@@ -72,13 +53,33 @@ export default function HabitsPage() {
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    let ignore = false;
+
+    async function fetchData() {
+      try {
+        const [habitsRes, logsRes] = await Promise.all([
+          fetch("/api/habits"),
+          fetch("/api/habits/logs"),
+        ]);
+        if (!ignore && habitsRes.ok && logsRes.ok) {
+          setHabits(await habitsRes.json());
+          setLogs(await logsRes.json());
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const openAddModal = () => {
@@ -127,7 +128,7 @@ export default function HabitsPage() {
       });
 
       if (res.ok) {
-        loadData();
+        refetchData();
       }
     } catch (err) {
       console.error(err);
@@ -141,7 +142,7 @@ export default function HabitsPage() {
           method: "DELETE",
         });
         if (res.ok) {
-          loadData();
+          refetchData();
         }
       } catch (err) {
         console.error(err);
@@ -170,7 +171,7 @@ export default function HabitsPage() {
     const daysToSunday = startDate.getDay();
     startDate.setDate(startDate.getDate() - daysToSunday);
 
-    let temp = new Date(startDate);
+    const temp = new Date(startDate);
     while (temp <= today) {
       grid.push(getLocalDateString(new Date(temp)));
       temp.setDate(temp.getDate() + 1);
@@ -189,12 +190,13 @@ export default function HabitsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Tus Hábitos</h2>
+          <h1 className="text-xl font-bold tracking-tight">Tus Hábitos</h1>
           <p className="text-text-muted text-xs mt-1">Configura tus objetivos y sigue tu constancia.</p>
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-1.5 py-2 px-3 bg-card-dark border border-border-dark/60 text-text-muted hover:text-foreground text-xs rounded-xl hover:bg-card-hover transition"
+          aria-label="Crear nuevo hábito"
+          className="flex items-center gap-1.5 py-2 px-3 bg-card-dark border border-border-dark/60 text-text-muted hover:text-foreground text-xs rounded-xl hover:bg-card-hover transition cursor-pointer"
         >
           <Plus className="h-3.5 w-3.5" /> Nuevo Hábito
         </button>
@@ -217,14 +219,14 @@ export default function HabitsPage() {
                       <IconMapper name={habit.icon} className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground/90 flex items-center gap-2">
+                      <h2 className="text-sm font-semibold text-foreground/90 flex items-center gap-2">
                         {habit.name}
                         {habit.type === "bad" && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-accent-rose/10 text-accent-rose">
                             Evitar
                           </span>
                         )}
-                      </h3>
+                      </h2>
                       <p className="text-[11px] text-text-muted mt-0.5">{habit.description}</p>
                       {/* Active Days */}
                       <div className="flex gap-1 mt-2">
@@ -251,13 +253,15 @@ export default function HabitsPage() {
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
                       onClick={() => openEditModal(habit)}
-                      className="p-2 border border-transparent hover:border-border-dark/60 rounded-lg text-text-muted hover:text-foreground transition"
+                      aria-label={`Editar hábito ${habit.name}`}
+                      className="p-2 border border-transparent hover:border-border-dark/60 rounded-lg text-text-muted hover:text-foreground transition cursor-pointer"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => handleDelete(habit.id)}
-                      className="p-2 border border-transparent hover:border-accent-rose/20 rounded-lg text-text-muted hover:text-accent-rose transition"
+                      aria-label={`Eliminar hábito ${habit.name}`}
+                      className="p-2 border border-transparent hover:border-accent-rose/20 rounded-lg text-text-muted hover:text-accent-rose transition cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -266,7 +270,7 @@ export default function HabitsPage() {
 
                 {/* Grid Grid */}
                 <div className="border-t border-border-dark/40 pt-4">
-                  <h4 className="text-[10px] font-mono text-text-muted mb-3 uppercase tracking-wider">Historial de Constancia (70 días)</h4>
+                  <h3 className="text-[10px] font-mono text-text-muted mb-3 uppercase tracking-wider">Historial de Constancia (70 días)</h3>
                   <div className="overflow-x-auto pb-1">
                     <div className="flex flex-col flex-wrap h-20 gap-1 select-none min-w-[320px]">
                       {gridDates.map((dateStr) => {
@@ -307,7 +311,7 @@ export default function HabitsPage() {
             ))
           ) : (
             <div className="p-12 text-center border border-dashed border-border-dark/50 rounded-2xl text-text-muted text-sm">
-              No tienes hábitos creados. Comienza haciendo clic en "Nuevo Hábito".
+              No tienes hábitos creados. Comienza haciendo clic en &quot;Nuevo Hábito&quot;.
             </div>
           )}
         </div>
@@ -333,20 +337,22 @@ export default function HabitsPage() {
             >
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-4 right-4 p-1.5 text-text-muted hover:text-foreground rounded-lg"
+                aria-label="Cerrar modal"
+                className="absolute top-4 right-4 p-1.5 text-text-muted hover:text-foreground rounded-lg cursor-pointer"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
 
-              <h3 className="text-sm font-semibold text-foreground/90">
+              <h2 className="text-sm font-semibold text-foreground/90">
                 {editingHabit ? "Editar Hábito" : "Nuevo Hábito"}
-              </h3>
+              </h2>
 
               <form onSubmit={handleSave} className="space-y-5 mt-5">
                 {/* Name */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-text-muted uppercase">Nombre del Hábito</label>
+                  <label htmlFor="habit-name-input" className="text-[10px] font-mono text-text-muted uppercase">Nombre del Hábito</label>
                   <input
+                    id="habit-name-input"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -358,8 +364,9 @@ export default function HabitsPage() {
 
                 {/* Description */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-text-muted uppercase">Descripción / Meta</label>
+                  <label htmlFor="habit-desc-input" className="text-[10px] font-mono text-text-muted uppercase">Descripción / Meta</label>
                   <input
+                    id="habit-desc-input"
                     type="text"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -370,12 +377,12 @@ export default function HabitsPage() {
 
                 {/* Habit Type */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-text-muted uppercase">Tipo de Hábito</label>
+                  <span className="text-[10px] font-mono text-text-muted uppercase block">Tipo de Hábito</span>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setHabitType("good")}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition ${
+                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
                         habitType === "good"
                           ? "bg-accent-green/10 border-accent-green/30 text-accent-green"
                           : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
@@ -387,7 +394,7 @@ export default function HabitsPage() {
                     <button
                       type="button"
                       onClick={() => setHabitType("bad")}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition ${
+                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
                         habitType === "bad"
                           ? "bg-accent-rose/10 border-accent-rose/30 text-accent-rose"
                           : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
@@ -401,14 +408,15 @@ export default function HabitsPage() {
 
                 {/* Icon */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-text-muted uppercase">Icono</label>
+                  <span className="text-[10px] font-mono text-text-muted uppercase block">Icono</span>
                   <div className="grid grid-cols-9 gap-1.5">
                     {ICONS.map((i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => setIcon(i)}
-                        className={`p-2 rounded-lg border flex items-center justify-center transition ${
+                        aria-label={`Seleccionar icono ${i}`}
+                        className={`p-2 rounded-lg border flex items-center justify-center transition cursor-pointer ${
                           icon === i
                             ? "bg-primary/10 border-primary/30 text-primary"
                             : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
@@ -422,14 +430,15 @@ export default function HabitsPage() {
 
                 {/* Color */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-text-muted uppercase">Color</label>
+                  <span className="text-[10px] font-mono text-text-muted uppercase block">Color</span>
                   <div className="flex gap-2">
                     {COLORS.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setColor(c)}
-                        className="w-5 h-5 rounded-full border border-border-dark/50 flex items-center justify-center transition hover:scale-105"
+                        aria-label={`Seleccionar color ${c}`}
+                        className="w-5 h-5 rounded-full border border-border-dark/50 flex items-center justify-center transition hover:scale-105 cursor-pointer"
                         style={{ backgroundColor: c }}
                       >
                         {color === c && <Check className="h-3 w-3 text-background-dark font-black" />}
@@ -440,7 +449,7 @@ export default function HabitsPage() {
 
                 {/* Frecuencia */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-text-muted uppercase">Frecuencia</label>
+                  <span className="text-[10px] font-mono text-text-muted uppercase block">Frecuencia</span>
                   <div className="grid grid-cols-7 gap-1">
                     {DAYS.map((day) => {
                       const active = daysOfWeek.includes(day.value);
@@ -449,7 +458,8 @@ export default function HabitsPage() {
                           key={day.value}
                           type="button"
                           onClick={() => toggleDay(day.value)}
-                          className={`py-1.5 rounded-lg text-[10px] font-bold font-mono border transition ${
+                          aria-label={`Activar ${day.label}`}
+                          className={`py-1.5 rounded-lg text-[10px] font-bold font-mono border transition cursor-pointer ${
                             active
                               ? "bg-primary/10 border-primary/30 text-primary"
                               : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
@@ -464,7 +474,7 @@ export default function HabitsPage() {
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-primary text-background-dark font-bold text-xs rounded-xl hover:bg-primary-hover transition mt-2"
+                  className="w-full py-2.5 bg-primary text-background-dark font-bold text-xs rounded-xl hover:bg-primary-hover transition mt-2 cursor-pointer"
                 >
                   {editingHabit ? "Guardar Hábito" : "Crear Hábito"}
                 </button>

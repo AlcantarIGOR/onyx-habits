@@ -16,7 +16,7 @@ export default function PomodoroTimer() {
 
   const playBeep = useCallback(() => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) return;
       
       const audioCtx = new AudioContextClass();
@@ -55,18 +55,23 @@ export default function PomodoroTimer() {
   }, [mode, playBeep]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    if (!isActive) return;
 
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (isActive && timeLeft === 0) {
-      handleTimerComplete();
-    }
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeout(() => {
+            handleTimerComplete();
+          }, 0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, timeLeft, handleTimerComplete]);
+  }, [isActive, handleTimerComplete]);
 
   const toggleTimer = () => setIsActive(!isActive);
 
@@ -151,7 +156,7 @@ export default function PomodoroTimer() {
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           onClick={toggleTimer}
-          className="flex items-center justify-center w-12 h-12 rounded-full bg-card-dark border border-border-dark/50 text-foreground/80 hover:bg-card-hover transition-colors"
+          className="flex items-center justify-center w-12 h-12 rounded-full bg-card-dark border border-border-dark/50 text-foreground/80 hover:bg-card-hover transition-colors cursor-pointer"
           aria-label={isActive ? "Pausar" : "Iniciar"}
         >
           {isActive
@@ -163,7 +168,7 @@ export default function PomodoroTimer() {
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           onClick={resetTimer}
-          className="flex items-center justify-center w-10 h-10 rounded-full border border-border-dark/50 text-text-muted hover:text-foreground/60 transition-colors"
+          className="flex items-center justify-center w-10 h-10 rounded-full border border-border-dark/50 text-text-muted hover:text-foreground/60 transition-colors cursor-pointer"
           aria-label="Reiniciar"
         >
           <RotateCcw size={14} />

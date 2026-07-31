@@ -1,13 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+async function generateSecureToken(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + '_mi_espacio_secure_salt_2026');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow static files, login page and login API without check
+  // Allow static files, login page, robots.txt and login API without check
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth/login') ||
+    pathname === '/robots.txt' ||
     pathname.includes('.') ||
     pathname.startsWith('/_next')
   ) {
@@ -16,8 +25,9 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get('auth_pin_token')?.value;
   const expectedPIN = process.env.ACCESS_PIN || '3340';
+  const expectedToken = await generateSecureToken(expectedPIN);
 
-  if (token !== expectedPIN) {
+  if (!token || token !== expectedToken) {
     if (pathname.startsWith('/api')) {
       return new NextResponse(
         JSON.stringify({ error: 'No autorizado' }),
@@ -32,12 +42,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

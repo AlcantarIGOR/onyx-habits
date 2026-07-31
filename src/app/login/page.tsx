@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
 import { Lock } from "lucide-react";
@@ -12,14 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const controls = useAnimation();
 
-  useEffect(() => {
-    // Submit PIN automatically when 4 digits are entered
-    if (pin.length === 4) {
-      handleLogin(pin);
-    }
-  }, [pin]);
-
-  const handleLogin = async (enteredPin: string) => {
+  const handleLogin = useCallback(async (enteredPin: string) => {
     setLoading(true);
     setError(false);
     try {
@@ -49,11 +42,15 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, controls]);
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 4 && !loading) {
-      setPin((prev) => prev + num);
+      const newPin = pin + num;
+      setPin(newPin);
+      if (newPin.length === 4) {
+        handleLogin(newPin);
+      }
     }
   };
 
@@ -98,6 +95,7 @@ export default function LoginPage() {
               key={num}
               onClick={() => handleKeyPress(num)}
               disabled={loading}
+              aria-label={`Número ${num}`}
               className="w-16 h-16 rounded-full bg-card-dark/40 hover:bg-card-dark/80 border border-border-dark/30 flex items-center justify-center text-lg font-medium transition active:scale-95 cursor-pointer select-none"
             >
               {num}
@@ -107,6 +105,7 @@ export default function LoginPage() {
           <button
             onClick={() => handleKeyPress("0")}
             disabled={loading}
+            aria-label="Número 0"
             className="w-16 h-16 rounded-full bg-card-dark/40 hover:bg-card-dark/80 border border-border-dark/30 flex items-center justify-center text-lg font-medium transition active:scale-95 cursor-pointer select-none"
           >
             0
@@ -114,6 +113,7 @@ export default function LoginPage() {
           <button
             onClick={handleBackspace}
             disabled={loading}
+            aria-label="Borrar dígito"
             className="w-16 h-16 rounded-full flex items-center justify-center text-xs font-mono text-text-muted hover:text-foreground transition active:scale-95 cursor-pointer select-none"
           >
             Borrar

@@ -19,23 +19,31 @@ export default function Shell({ children }: ShellProps) {
     { name: "Bitácora", href: "/journal", icon: BookOpen },
   ];
 
-  if (pathname === "/login") {
-    return <main className="min-h-screen bg-background-dark text-foreground">{children}</main>;
+  if (pathname?.startsWith("/login")) {
+    return <main id="main-content" className="min-h-screen bg-background-dark text-foreground">{children}</main>;
   }
 
   return (
     <div className="flex min-h-screen bg-background-dark text-foreground">
+      {/* Skip to content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-background-dark focus:font-bold focus:rounded-lg"
+      >
+        Saltar al contenido principal
+      </a>
+
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-56 fixed inset-y-0 left-0 bg-background-dark border-r border-border-dark/50 z-20">
+      <aside aria-label="Navegación principal" className="hidden md:flex flex-col w-56 fixed inset-y-0 left-0 bg-background-dark border-r border-border-dark/50 z-20">
         {/* Header */}
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
             <span className="text-primary text-sm font-bold">M</span>
           </div>
           <div>
-            <h1 className="font-semibold text-sm text-foreground tracking-tight">
+            <span className="font-semibold text-sm text-foreground tracking-tight block">
               Mi Espacio
-            </h1>
+            </span>
           </div>
         </div>
 
@@ -84,13 +92,13 @@ export default function Shell({ children }: ShellProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 md:p-10 pb-20 sm:pb-24 md:pb-10 max-w-3xl mx-auto w-full">
+        <main id="main-content" className="flex-1 p-4 sm:p-6 md:p-10 pb-20 sm:pb-24 md:pb-10 max-w-3xl mx-auto w-full">
           {children}
         </main>
       </div>
 
       {/* Bottom Nav - Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-background-dark/95 backdrop-blur-lg border-t border-border-dark/50 flex items-center justify-around px-4 z-20">
+      <nav aria-label="Navegación móvil" className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-background-dark/95 backdrop-blur-lg border-t border-border-dark/50 flex items-center justify-around px-4 z-20">
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;

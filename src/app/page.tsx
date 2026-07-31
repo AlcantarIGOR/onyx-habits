@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Habit,
   HabitLog,
@@ -8,20 +8,10 @@ import {
   getLocalDateString,
 } from "@/lib/storage";
 import {
-  CheckCircle2,
   Plus,
   Trash2,
   ShieldCheck,
   ShieldAlert,
-  Sunrise,
-  Dog,
-  Brain,
-  Target,
-  School,
-  Music,
-  Moon,
-  Award,
-  Zap,
   ListTodo,
   Heart,
   Timer,
@@ -32,22 +22,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import PomodoroTimer from "@/components/PomodoroTimer";
 import { StickyNotes } from "@/components/StickyNotes";
-
-// ─── Icon Mapper ─────────────────────────────────────────────────
-const IconMapper = ({
-  name,
-  className,
-}: {
-  name: string;
-  className?: string;
-}) => {
-  const icons: Record<string, React.ComponentType<{ className?: string }>> = {
-    sunrise: Sunrise, dog: Dog, brain: Brain, target: Target,
-    school: School, zap: Zap, guitar: Music, moon: Moon, chess: Award,
-  };
-  const IconComponent = icons[name] || CheckCircle2;
-  return <IconComponent className={className} />;
-};
+import IconMapper from "@/components/IconMapper";
 
 // ─── Priority config ─────────────────────────────────────────────
 const PRIORITY_CONFIG = {
@@ -66,52 +41,53 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
 ];
 
 export default function Dashboard() {
-  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("tasks");
 
   // Data State
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [todayStr, setTodayStr] = useState("");
+  const [todayStr] = useState(() => getLocalDateString());
   const [loading, setLoading] = useState(true);
 
   // Form State
   const [newTaskText, setNewTaskText] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<"high" | "medium" | "low">("medium");
 
-  const loadData = async (dateStr: string) => {
-    setLoading(true);
-    try {
-      const [tasksRes, habitsRes, logsRes] = await Promise.all([
-        fetch(`/api/tasks?date=${dateStr}`),
-        fetch("/api/habits"),
-        fetch("/api/habits/logs"),
-      ]);
-
-      if (tasksRes.ok && habitsRes.ok && logsRes.ok) {
-        const tasksData = await tasksRes.json();
-        const habitsData = await habitsRes.json();
-        const logsData = await logsRes.json();
-        setTasks(tasksData);
-        setHabits(habitsData);
-        setLogs(logsData);
-      }
-    } catch (err) {
-      console.error("Error loading dashboard data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    const dateStr = getLocalDateString();
-    setTodayStr(dateStr);
-    loadData(dateStr);
-  }, []);
+    let ignore = false;
 
-  // ── Stats calculation ──────────────────────────────────────────
-  const calculateStats = () => {
+    async function fetchData() {
+      try {
+        const [tasksRes, habitsRes, logsRes] = await Promise.all([
+          fetch(`/api/tasks?date=${todayStr}`),
+          fetch("/api/habits"),
+          fetch("/api/habits/logs"),
+        ]);
+
+        if (!ignore && tasksRes.ok && habitsRes.ok && logsRes.ok) {
+          const tasksData = await tasksRes.json();
+          const habitsData = await habitsRes.json();
+          const logsData = await logsRes.json();
+          setTasks(tasksData);
+          setHabits(habitsData);
+          setLogs(logsData);
+        }
+      } catch (err) {
+        console.error("Error loading dashboard data:", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => {
+      ignore = true;
+    };
+  }, [todayStr]);
+
+  // ── Memoized Stats calculation ──────────────────────────────────────────
+  const { streak, completionRate } = useMemo(() => {
     const activeHabitsCountByDay = (date: Date) => {
       const dayOfWeek = date.getDay();
       return habits.filter((h) => h.daysOfWeek.includes(dayOfWeek)).length;
@@ -121,8 +97,8 @@ export default function Dashboard() {
       return logs.filter((l) => l.date === dateStr && l.completed).length;
     };
 
-    let streak = 0;
-    let tempDate = new Date();
+    let calculatedStreak = 0;
+    const tempDate = new Date();
 
     for (let i = 0; i < 365; i++) {
       const dateStr = getLocalDateString(tempDate);
@@ -136,7 +112,7 @@ export default function Dashboard() {
 
       const ratio = completedCount / activeCount;
       if (ratio >= 0.5) {
-        streak++;
+        calculatedStreak++;
       } else {
         if (i === 0) {
           tempDate.setDate(tempDate.getDate() - 1);
@@ -149,7 +125,7 @@ export default function Dashboard() {
 
     let completedInLast30Days = 0;
     let activeInLast30Days = 0;
-    let checkDate = new Date();
+    const checkDate = new Date();
 
     for (let i = 0; i < 30; i++) {
       const dateStr = getLocalDateString(checkDate);
@@ -158,15 +134,13 @@ export default function Dashboard() {
       checkDate.setDate(checkDate.getDate() - 1);
     }
 
-    const completionRate =
+    const calculatedRate =
       activeInLast30Days > 0
         ? Math.round((completedInLast30Days / activeInLast30Days) * 100)
         : 0;
 
-    return { streak, completionRate };
-  };
-
-  const { streak, completionRate } = calculateStats();
+    return { streak: calculatedStreak, completionRate: calculatedRate };
+  }, [habits, logs]);
 
   // ── Habits Logic ───────────────────────────────────────────────
   const todayDayOfWeek = new Date().getDay();
@@ -308,9 +282,9 @@ export default function Dashboard() {
       {/* Greeting & Quick Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
             {greeting}
-          </h2>
+          </h1>
           <p className="text-sm text-text-muted capitalize">{dateFormatted}</p>
         </div>
 
@@ -336,7 +310,8 @@ export default function Dashboard() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-[13px] font-medium transition-all duration-200 ${
+              aria-label={`Ver pestaña ${tab.label}`}
+              className={`relative flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-[13px] font-medium transition-all duration-200 cursor-pointer ${
                 isActive
                   ? "text-foreground"
                   : "text-text-muted hover:text-foreground/60"
@@ -394,11 +369,13 @@ export default function Dashboard() {
                       onChange={(e) => setNewTaskText(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
                       placeholder="¿Qué necesitas hacer hoy?"
+                      aria-label="Escribe una nueva tarea"
                       className="flex-1 bg-card-dark border border-border-dark/50 rounded-xl px-4 py-3 text-sm text-foreground focus:border-primary/30 focus:outline-none transition placeholder:text-text-muted/60"
                     />
                     <button
                       onClick={handleAddTask}
-                      className="px-4 py-3 bg-card-dark border border-border-dark/50 text-text-muted hover:text-foreground rounded-xl hover:bg-card-hover transition-all"
+                      aria-label="Agregar tarea"
+                      className="px-4 py-3 bg-card-dark border border-border-dark/50 text-text-muted hover:text-foreground rounded-xl hover:bg-card-hover transition-all cursor-pointer"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -409,7 +386,8 @@ export default function Dashboard() {
                       <button
                         key={p}
                         onClick={() => setNewTaskPriority(p)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                        aria-label={`Prioridad ${PRIORITY_CONFIG[p].label}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                           newTaskPriority === p
                             ? "bg-card-dark border border-border-dark/50 text-foreground/80"
                             : "text-text-muted hover:text-foreground/50"
@@ -440,7 +418,8 @@ export default function Dashboard() {
                         >
                           <button
                             onClick={() => handleToggleTask(task.id)}
-                            className={`w-[18px] h-[18px] rounded-md border flex items-center justify-center flex-shrink-0 transition-all ${
+                            aria-label={task.completed ? "Marcar tarea como pendiente" : "Marcar tarea como completada"}
+                            className={`w-[18px] h-[18px] rounded-md border flex items-center justify-center flex-shrink-0 transition-all cursor-pointer ${
                               task.completed
                                 ? "bg-primary/20 border-primary/30 text-primary"
                                 : "border-border-dark hover:border-primary/30"
@@ -454,7 +433,8 @@ export default function Dashboard() {
                           </span>
                           <button
                             onClick={() => handleDeleteTask(task.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-accent-rose transition-all"
+                            aria-label="Eliminar tarea"
+                            className="opacity-60 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-text-muted hover:text-accent-rose transition-all cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -491,9 +471,9 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="h-4 w-4 text-accent-green/70" />
-                      <h3 className="text-[13px] font-medium text-text-muted">
+                      <h2 className="text-[13px] font-medium text-text-muted">
                         Hábitos positivos
-                      </h3>
+                      </h2>
                     </div>
                     <div className="space-y-2">
                       {goodHabits.map((habit) => {
@@ -502,7 +482,11 @@ export default function Dashboard() {
                           <motion.div
                             key={habit.id}
                             layout
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Completar hábito ${habit.name}`}
                             onClick={() => handleToggleHabit(habit.id)}
+                            onKeyDown={(e) => e.key === "Enter" && handleToggleHabit(habit.id)}
                             className={`flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-200 ${
                               completed
                                 ? "opacity-45"
@@ -519,9 +503,9 @@ export default function Dashboard() {
                               <IconMapper name={habit.icon} className="h-4 w-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className={`text-[13px] font-medium ${completed ? "line-through text-text-muted" : "text-foreground/90"}`}>
+                              <h3 className={`text-[13px] font-medium ${completed ? "line-through text-text-muted" : "text-foreground/90"}`}>
                                 {habit.name}
-                              </h4>
+                              </h3>
                               <p className="text-[11px] text-text-muted truncate mt-0.5">
                                 {habit.description}
                               </p>
@@ -544,9 +528,9 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <ShieldAlert className="h-4 w-4 text-accent-rose/70" />
-                      <h3 className="text-[13px] font-medium text-text-muted">
+                      <h2 className="text-[13px] font-medium text-text-muted">
                         Hábitos a evitar
-                      </h3>
+                      </h2>
                     </div>
                     <div className="space-y-2">
                       {badHabits.map((habit) => {
@@ -555,7 +539,11 @@ export default function Dashboard() {
                           <motion.div
                             key={habit.id}
                             layout
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Registrar haber evitado ${habit.name}`}
                             onClick={() => handleToggleHabit(habit.id)}
+                            onKeyDown={(e) => e.key === "Enter" && handleToggleHabit(habit.id)}
                             className={`flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-200 ${
                               completed
                                 ? "bg-accent-green/5 border border-accent-green/10"
@@ -572,9 +560,9 @@ export default function Dashboard() {
                               <IconMapper name={habit.icon} className="h-4 w-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className={`text-[13px] font-medium ${completed ? "text-accent-green/80" : "text-foreground/90"}`}>
+                              <h3 className={`text-[13px] font-medium ${completed ? "text-accent-green/80" : "text-foreground/90"}`}>
                                 {habit.name}
-                              </h4>
+                              </h3>
                               <p className="text-[11px] text-text-muted truncate mt-0.5">
                                 {completed ? "Éxito — lo evitaste hoy" : habit.description}
                               </p>

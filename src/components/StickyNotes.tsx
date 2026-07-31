@@ -19,21 +19,26 @@ export function StickyNotes() {
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [loading, setLoading] = useState(true);
 
-  const loadNotes = async () => {
-    try {
-      const res = await fetch("/api/notes");
-      if (res.ok) {
-        setNotes(await res.json());
-      }
-    } catch (err) {
-      console.error("Error loading notes:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadNotes();
+    let ignore = false;
+
+    async function fetchNotes() {
+      try {
+        const res = await fetch("/api/notes");
+        if (!ignore && res.ok) {
+          setNotes(await res.json());
+        }
+      } catch (err) {
+        console.error("Error loading notes:", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchNotes();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleAddNote = async () => {
@@ -115,10 +120,10 @@ export function StickyNotes() {
 
                 <button
                   onClick={() => handleDelete(note.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 p-1 text-text-muted hover:text-foreground/60 rounded-md"
+                  className="opacity-60 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute right-2 top-2 p-1 text-text-muted hover:text-foreground/60 rounded-md cursor-pointer"
                   aria-label="Eliminar nota"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </motion.div>
             ))}
@@ -148,7 +153,7 @@ export function StickyNotes() {
               <button
                 key={color}
                 onClick={() => setSelectedColor(color)}
-                className={`w-3.5 h-3.5 rounded-full transition-all ${
+                className={`w-3.5 h-3.5 rounded-full transition-all cursor-pointer ${
                   selectedColor === color
                     ? "scale-110 ring-1 ring-offset-2 ring-offset-card-dark"
                     : "opacity-50 hover:opacity-80"
@@ -157,7 +162,7 @@ export function StickyNotes() {
                   backgroundColor: color,
                   "--tw-ring-color": color,
                 } as React.CSSProperties}
-                aria-label={`Seleccionar color`}
+                aria-label={`Seleccionar color ${color}`}
                 type="button"
               />
             ))}

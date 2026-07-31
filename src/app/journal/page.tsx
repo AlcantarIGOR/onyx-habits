@@ -1,11 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { 
-  storage, 
-  DailyReflection, 
-  getLocalDateString 
-} from "@/lib/storage";
+import React, { useState, useEffect, useCallback } from "react";
+import { DailyReflection, getLocalDateString } from "@/lib/storage";
 import { 
   Flame, 
   Award, 
@@ -19,9 +15,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function JournalPage() {
-  const [mounted, setMounted] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
   const [reflections, setReflections] = useState<DailyReflection[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Form fields
   const [flowRating, setFlowRating] = useState<number>(3);
@@ -30,29 +26,83 @@ export default function JournalPage() {
   const [notes, setNotes] = useState("");
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    const today = getLocalDateString();
-    setSelectedDate(today);
-    setReflections(storage.getReflections());
-    loadReflectionForDate(today);
+  const loadAllReflections = useCallback(async () => {
+    try {
+      const res = await fetch("/api/reflections");
+      if (res.ok) {
+        const data = await res.json();
+        setReflections(data);
+      }
+    } catch (err) {
+      console.error("Error loading reflections:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const loadReflectionForDate = (dateStr: string) => {
-    const existing = storage.getReflectionForDate(dateStr);
-    if (existing) {
-      setFlowRating(existing.flowRating);
-      setVictory(existing.victory);
-      setLesson(existing.lesson);
-      setNotes(existing.notes);
-    } else {
-      // Defaults
+  const loadReflectionForDate = useCallback(async (dateStr: string) => {
+    try {
+      const res = await fetch(`/api/reflections?date=${dateStr}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          setFlowRating(data.flowRating || 3);
+          setVictory(data.victory || "");
+          setLesson(data.lesson || "");
+          setNotes(data.notes || "");
+          return;
+        }
+      }
+      // Defaults if not found
       setFlowRating(3);
       setVictory("");
       setLesson("");
       setNotes("");
+    } catch (err) {
+      console.error("Error fetching date reflection:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function fetchJournalData() {
+      try {
+        const [allRes, dateRes] = await Promise.all([
+          fetch("/api/reflections"),
+          fetch(`/api/reflections?date=${selectedDate}`),
+        ]);
+
+        if (!ignore && allRes.ok) {
+          setReflections(await allRes.json());
+        }
+
+        if (!ignore && dateRes.ok) {
+          const data = await dateRes.json();
+          if (data) {
+            setFlowRating(data.flowRating || 3);
+            setVictory(data.victory || "");
+            setLesson(data.lesson || "");
+            setNotes(data.notes || "");
+          } else {
+            setFlowRating(3);
+            setVictory("");
+            setLesson("");
+            setNotes("");
+          }
+        }
+      } catch (err) {
+        console.error("Error loading reflections:", err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchJournalData();
+    return () => {
+      ignore = true;
+    };
+  }, [selectedDate]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
@@ -60,24 +110,31 @@ export default function JournalPage() {
     loadReflectionForDate(newDate);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    storage.saveReflection({
-      date: selectedDate,
-      flowRating,
-      victory,
-      lesson,
-      notes,
-    });
 
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      const res = await fetch("/api/reflections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: selectedDate,
+          flowRating,
+          victory,
+          lesson,
+          notes,
+        }),
+      });
 
-    // Reload list
-    setReflections(storage.getReflections());
+      if (res.ok) {
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+        loadAllReflections();
+      }
+    } catch (err) {
+      console.error("Error saving reflection:", err);
+    }
   };
-
-  if (!mounted) return null;
 
   // Sort reflections by date descending
   const sortedReflections = [...reflections].sort((a, b) => b.date.localeCompare(a.date));
@@ -86,7 +143,7 @@ export default function JournalPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Bitácora de Rendimiento</h2>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Bitácora de Rendimiento</h1>
         <p className="text-text-muted text-sm mt-1">Registra tu estado de concentración, tus aprendizajes y tus victorias del día.</p>
       </div>
 
@@ -97,7 +154,7 @@ export default function JournalPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-dark pb-4">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" />
-                <h3 className="font-bold text-base">Registro de Hoy / Histórico</h3>
+                <h2 className="font-bold text-base">Registro de Hoy / Histórico</h2>
               </div>
               
               {/* Date Input */}
@@ -128,6 +185,7 @@ export default function JournalPage() {
                       key={val}
                       type="button"
                       onClick={() => setFlowRating(val)}
+                      aria-label={`Calificar enfoque ${val} de 5`}
                       className={`p-3 rounded-xl border flex items-center justify-center transition-all ${
                         active 
                           ? "bg-primary/5 border-primary text-primary shadow-[0_0_15px_rgba(163,230,53,0.1)]" 
@@ -190,7 +248,7 @@ export default function JournalPage() {
             <div className="flex items-center gap-4 border-t border-border-dark pt-4">
               <button
                 type="submit"
-                className="flex items-center gap-2 py-3 px-6 bg-primary text-background-dark font-bold text-sm rounded-xl hover:bg-primary-hover transition-all duration-200"
+                className="flex items-center gap-2 py-3 px-6 bg-primary text-background-dark font-bold text-sm rounded-xl hover:bg-primary-hover transition-all duration-200 cursor-pointer"
               >
                 <Save className="h-4 w-4" /> Guardar Registro
               </button>
@@ -203,7 +261,7 @@ export default function JournalPage() {
                     exit={{ opacity: 0 }}
                     className="text-xs font-mono text-primary font-bold"
                   >
-                    ✓ ¡Guardado en el sistema correctamente!
+                    ✓ ¡Guardado en la base de datos correctamente!
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -213,10 +271,14 @@ export default function JournalPage() {
 
         {/* Timeline of Past Reflections */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold tracking-tight">Historial de Enfoque</h3>
+          <h2 className="text-lg font-bold tracking-tight">Historial de Enfoque</h2>
           
           <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2">
-            {sortedReflections.length > 0 ? (
+            {loading ? (
+              <div className="p-6 text-center text-text-muted text-xs font-mono">
+                Cargando bitácora...
+              </div>
+            ) : sortedReflections.length > 0 ? (
               sortedReflections.map((ref) => (
                 <div key={ref.id} className="p-4 rounded-xl border border-border-dark bg-card-dark/40 space-y-3 hover:border-border-dark/80 transition">
                   {/* Meta */}
