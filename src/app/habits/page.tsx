@@ -78,11 +78,8 @@ export default function HabitsPage() {
   };
 
   useEffect(() => {
-    setMounted(true);
     loadData();
   }, []);
-
-  if (!mounted) return null;
 
   const openAddModal = () => {
     setEditingHabit(null);

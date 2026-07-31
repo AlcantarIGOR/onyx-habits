@@ -105,13 +105,10 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    setMounted(true);
     const dateStr = getLocalDateString();
     setTodayStr(dateStr);
     loadData(dateStr);
   }, []);
-
-  if (!mounted) return null;
 
   // ── Stats calculation ──────────────────────────────────────────
   const calculateStats = () => {
