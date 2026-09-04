@@ -11,6 +11,18 @@ import {
   Award,
   Calendar,
   CheckCircle2,
+  Cloud,
+  Smartphone,
+  Droplet,
+  Sparkles,
+  BookOpen,
+  Code,
+  Wallet,
+  PenLine,
+  Flame,
+  Heart,
+  Coffee,
+  Dumbbell,
 } from "lucide-react";
 
 interface IconMapperProps {
@@ -30,6 +42,18 @@ export function IconMapper({ name, className }: IconMapperProps) {
     moon: Moon,
     chess: Award,
     calendar: Calendar,
+    cloud: Cloud,
+    smartphone: Smartphone,
+    droplet: Droplet,
+    sparkles: Sparkles,
+    book: BookOpen,
+    code: Code,
+    wallet: Wallet,
+    edit: PenLine,
+    flame: Flame,
+    heart: Heart,
+    coffee: Coffee,
+    dumbbell: Dumbbell,
   };
 
   const IconComponent = icons[name] || CheckCircle2;

@@ -10,12 +10,46 @@ import {
   Check,
   ShieldCheck,
   ShieldAlert,
+  Flame,
+  TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import IconMapper from "@/components/IconMapper";
 
-const ICONS = ["sunrise", "dog", "brain", "target", "school", "zap", "guitar", "moon", "chess"];
-const COLORS = ["#8B9FCA", "#7EC89B", "#D4A574", "#C4787E", "#9B8EC4", "#E2E8F0"];
+const ICONS = [
+  "moon",
+  "sunrise",
+  "cloud",
+  "dog",
+  "school",
+  "smartphone",
+  "brain",
+  "droplet",
+  "sparkles",
+  "book",
+  "code",
+  "target",
+  "wallet",
+  "edit",
+  "flame",
+  "heart",
+  "coffee",
+  "dumbbell",
+];
+
+const COLORS = [
+  "#F43F5E", // Rosa / Rojo
+  "#F59E0B", // Ámbar
+  "#3B82F6", // Azul
+  "#22D3EE", // Cyan
+  "#7C6EF6", // Violeta
+  "#E879F9", // Fucsia
+  "#4ADE80", // Verde
+  "#10B981", // Esmeralda
+  "#D4A574", // Arena
+  "#8B9FCA", // Periwinkle
+];
+
 const DAYS = [
   { label: "Do", value: 0 },
   { label: "Lu", value: 1 },
@@ -38,8 +72,8 @@ export default function HabitsPage() {
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("brain");
   const [color, setColor] = useState(COLORS[0]);
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [habitType, setHabitType] = useState<"good" | "bad">("good");
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [habitType, setHabitType] = useState<Habit["type"]>("fundamental");
 
   const refetchData = async () => {
     try {
@@ -77,8 +111,28 @@ export default function HabitsPage() {
     }
 
     fetchData();
+
+    const handleFocus = () => fetchData();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchData();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchData();
+      }
+    }, 2500);
+
     return () => {
       ignore = true;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
     };
   }, []);
 
@@ -88,8 +142,8 @@ export default function HabitsPage() {
     setDescription("");
     setIcon("brain");
     setColor(COLORS[0]);
-    setDaysOfWeek([1, 2, 3, 4, 5]);
-    setHabitType("good");
+    setDaysOfWeek([0, 1, 2, 3, 4, 5, 6]);
+    setHabitType("fundamental");
     setIsModalOpen(true);
   };
 
@@ -100,7 +154,7 @@ export default function HabitsPage() {
     setIcon(habit.icon);
     setColor(habit.color);
     setDaysOfWeek(habit.daysOfWeek);
-    setHabitType(habit.type || "good");
+    setHabitType(habit.type || "fundamental");
     setIsModalOpen(true);
   };
 
@@ -185,260 +239,314 @@ export default function HabitsPage() {
     return logs.some((l) => l.habitId === habitId && l.date === dateStr && l.completed);
   };
 
+  const fundamentalHabits = habits.filter((h) => h.type === "fundamental");
+  const maintenanceHabits = habits.filter((h) => h.type === "maintenance" || h.type === "good");
+  const growthHabits = habits.filter((h) => h.type === "growth");
+  const badHabits = habits.filter((h) => h.type === "bad");
+
+  const renderHabitCard = (habit: Habit) => (
+    <div key={habit.id} className="glass-panel p-5 space-y-4 hover:border-border-dark/80 transition duration-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+            style={{ backgroundColor: `${habit.color}15`, color: habit.color }}
+          >
+            <IconMapper name={habit.icon} className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground/90 flex items-center gap-2">
+              {habit.name}
+              {habit.type === "fundamental" && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-rose/15 text-accent-rose font-medium">
+                  Fundamental
+                </span>
+              )}
+              {habit.type === "maintenance" && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 font-medium">
+                  Mantenimiento
+                </span>
+              )}
+              {habit.type === "growth" && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-green/15 text-accent-green font-medium">
+                  Crecimiento
+                </span>
+              )}
+            </h3>
+            {habit.description && <p className="text-xs text-text-muted mt-0.5">{habit.description}</p>}
+            {/* Active Days */}
+            <div className="flex gap-1 mt-2">
+              {DAYS.map((day) => {
+                const isActive = habit.daysOfWeek.includes(day.value);
+                return (
+                  <span
+                    key={day.value}
+                    className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                      isActive
+                        ? "bg-primary/15 text-primary border border-primary/25"
+                        : "bg-background-dark text-text-muted/40 border border-border-dark/30"
+                    }`}
+                  >
+                    {day.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          <button
+            onClick={() => openEditModal(habit)}
+            aria-label={`Editar ${habit.name}`}
+            className="p-1.5 text-text-muted hover:text-foreground hover:bg-card-dark rounded-lg transition cursor-pointer"
+          >
+            <Edit3 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(habit.id)}
+            aria-label={`Eliminar ${habit.name}`}
+            className="p-1.5 text-text-muted hover:text-accent-rose hover:bg-card-dark rounded-lg transition cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* GitHub-style Heatmap Grid */}
+      <div className="space-y-1.5 pt-2 border-t border-border-dark/40">
+        <div className="flex justify-between items-center text-[10px] font-mono text-text-muted">
+          <span>Historial reciente</span>
+          <span>Últimas 10 semanas</span>
+        </div>
+        <div className="flex gap-1 overflow-x-auto py-1">
+          {Array.from({ length: Math.ceil(gridDates.length / 7) }).map((_, colIdx) => (
+            <div key={colIdx} className="flex flex-col gap-1">
+              {Array.from({ length: 7 }).map((_, rowIdx) => {
+                const dateIndex = colIdx * 7 + rowIdx;
+                if (dateIndex >= gridDates.length) return null;
+                const dateStr = gridDates[dateIndex];
+                const completed = isLogCompleted(habit.id, dateStr);
+
+                return (
+                  <div
+                    key={dateStr}
+                    title={`${dateStr}: ${completed ? "Completado" : "Pendiente"}`}
+                    className={`w-2.5 h-2.5 rounded-sm transition-colors ${
+                      completed
+                        ? habit.type === "bad"
+                          ? "bg-accent-rose shadow-[0_0_8px_rgba(244,63,94,0.4)]"
+                          : "bg-accent-green shadow-[0_0_8px_rgba(74,222,128,0.4)]"
+                        : "bg-border-dark/40"
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Tus Hábitos</h1>
-          <p className="text-text-muted text-xs mt-1">Configura tus objetivos y sigue tu constancia.</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Gestión de Hábitos</h1>
+          <p className="text-text-muted text-xs mt-1">Configura tus 17 hábitos en sus 3 categorías.</p>
         </div>
         <button
           onClick={openAddModal}
-          aria-label="Crear nuevo hábito"
-          className="flex items-center gap-1.5 py-2 px-3 bg-card-dark border border-border-dark/60 text-text-muted hover:text-foreground text-xs rounded-xl hover:bg-card-hover transition cursor-pointer"
+          className="flex items-center gap-1.5 py-2 px-3.5 bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-medium rounded-xl transition cursor-pointer"
         >
-          <Plus className="h-3.5 w-3.5" /> Nuevo Hábito
+          <Plus className="h-4 w-4" /> Nuevo Hábito
         </button>
       </div>
 
-      {/* Habits List */}
+      {/* Habits List Grouped by 3 Tiers */}
       {loading ? (
         <div className="py-16 text-center text-text-muted text-xs font-mono">Cargando hábitos...</div>
       ) : (
-        <div className="space-y-6">
-          {habits.length > 0 ? (
-            habits.map((habit) => (
-              <div key={habit.id} className="glass-panel p-5 space-y-5 hover:border-border-dark/80 transition duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm"
-                      style={{ backgroundColor: `${habit.color}12`, color: habit.color }}
-                    >
-                      <IconMapper name={habit.icon} className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-semibold text-foreground/90 flex items-center gap-2">
-                        {habit.name}
-                        {habit.type === "bad" && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-accent-rose/10 text-accent-rose">
-                            Evitar
-                          </span>
-                        )}
-                      </h2>
-                      <p className="text-[11px] text-text-muted mt-0.5">{habit.description}</p>
-                      {/* Active Days */}
-                      <div className="flex gap-1 mt-2">
-                        {DAYS.map((day) => {
-                          const isActive = habit.daysOfWeek.includes(day.value);
-                          return (
-                            <span
-                              key={day.value}
-                              className={`text-[9px] font-mono font-bold px-1 py-0.5 rounded ${
-                                isActive
-                                  ? "bg-primary/10 text-primary/80 border border-primary/20"
-                                  : "bg-background-dark text-text-muted/60 border border-border-dark/40"
-                              }`}
-                            >
-                              {day.label}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    <button
-                      onClick={() => openEditModal(habit)}
-                      aria-label={`Editar hábito ${habit.name}`}
-                      className="p-2 border border-transparent hover:border-border-dark/60 rounded-lg text-text-muted hover:text-foreground transition cursor-pointer"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(habit.id)}
-                      aria-label={`Eliminar hábito ${habit.name}`}
-                      className="p-2 border border-transparent hover:border-accent-rose/20 rounded-lg text-text-muted hover:text-accent-rose transition cursor-pointer"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grid Grid */}
-                <div className="border-t border-border-dark/40 pt-4">
-                  <h3 className="text-[10px] font-mono text-text-muted mb-3 uppercase tracking-wider">Historial de Constancia (70 días)</h3>
-                  <div className="overflow-x-auto pb-1">
-                    <div className="flex flex-col flex-wrap h-20 gap-1 select-none min-w-[320px]">
-                      {gridDates.map((dateStr) => {
-                        const completed = isLogCompleted(habit.id, dateStr);
-                        const activeOnDay = habit.daysOfWeek.includes(
-                          new Date(dateStr + "T00:00:00").getDay()
-                        );
-
-                        let bg = "bg-border-dark/30";
-                        if (completed) {
-                          bg = "";
-                        } else if (!activeOnDay) {
-                          bg = "bg-border-dark/10 opacity-20";
-                        }
-
-                        return (
-                          <div
-                            key={dateStr}
-                            className={`w-2 h-2 rounded-sm relative group cursor-pointer ${bg}`}
-                            style={{
-                              backgroundColor: completed ? habit.color : undefined,
-                              boxShadow: completed ? `0 0 6px ${habit.color}25` : undefined,
-                            }}
-                          >
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col items-center z-30 pointer-events-none">
-                              <div className="bg-card-dark border border-border-dark px-2 py-0.5 rounded text-[9px] font-mono text-foreground whitespace-nowrap shadow-xl">
-                                <span className="font-bold">{dateStr}</span>: {completed ? "Completado" : activeOnDay ? "Pendiente" : "No programado"}
-                              </div>
-                              <div className="w-1 h-1 bg-card-dark border-r border-b border-border-dark rotate-45 -mt-0.5" />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-8">
+          {/* 1. 🔴 Fundamentales */}
+          {fundamentalHabits.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-accent-rose" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-accent-rose">
+                  Hábitos Fundamentales ({fundamentalHabits.length})
+                </h2>
               </div>
-            ))
-          ) : (
-            <div className="p-12 text-center border border-dashed border-border-dark/50 rounded-2xl text-text-muted text-sm">
-              No tienes hábitos creados. Comienza haciendo clic en &quot;Nuevo Hábito&quot;.
+              <div className="space-y-3">{fundamentalHabits.map(renderHabitCard)}</div>
+            </div>
+          )}
+
+          {/* 2. 🟡 Mantenimiento */}
+          {maintenanceHabits.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-amber-400">
+                  Hábitos de Mantenimiento ({maintenanceHabits.length})
+                </h2>
+              </div>
+              <div className="space-y-3">{maintenanceHabits.map(renderHabitCard)}</div>
+            </div>
+          )}
+
+          {/* 3. 🟢 Crecimiento */}
+          {growthHabits.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-accent-green" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-accent-green">
+                  Hábitos de Crecimiento ({growthHabits.length})
+                </h2>
+              </div>
+              <div className="space-y-3">{growthHabits.map(renderHabitCard)}</div>
+            </div>
+          )}
+
+          {/* 4. 🛡️ A Evitar */}
+          {badHabits.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-text-muted" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+                  Hábitos a Evitar ({badHabits.length})
+                </h2>
+              </div>
+              <div className="space-y-3">{badHabits.map(renderHabitCard)}</div>
             </div>
           )}
         </div>
       )}
 
-      {/* Add / Edit Modal */}
+      {/* ── Modal Agregar / Editar Hábito ── */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background-dark/80 backdrop-blur-md">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-background-dark/80 backdrop-blur-xs"
-            />
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 15 }}
-              className="glass-panel w-full max-w-md bg-card-dark border border-border-dark/80 p-5 z-10 relative overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card-dark border border-border-dark/60 rounded-2xl p-6 w-full max-w-lg shadow-2xl relative max-h-[90vh] overflow-y-auto"
             >
               <button
                 onClick={() => setIsModalOpen(false)}
-                aria-label="Cerrar modal"
                 className="absolute top-4 right-4 p-1.5 text-text-muted hover:text-foreground rounded-lg cursor-pointer"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
 
-              <h2 className="text-sm font-semibold text-foreground/90">
+              <h2 className="text-base font-bold text-foreground">
                 {editingHabit ? "Editar Hábito" : "Nuevo Hábito"}
               </h2>
 
-              <form onSubmit={handleSave} className="space-y-5 mt-5">
+              <form onSubmit={handleSave} className="space-y-4 mt-4">
                 {/* Name */}
-                <div className="space-y-1.5">
-                  <label htmlFor="habit-name-input" className="text-[10px] font-mono text-text-muted uppercase">Nombre del Hábito</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-text-muted">Nombre del Hábito</label>
                   <input
-                    id="habit-name-input"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej. Tomar 2L de agua"
-                    className="w-full bg-background-dark border border-border-dark/60 rounded-xl px-3 py-2 text-sm text-foreground focus:border-primary/30 focus:outline-none transition"
+                    placeholder="Ej. Dormir a las 22:15"
+                    className="w-full bg-card-hover border border-border-dark/60 rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:border-primary/40 focus:outline-none transition"
                     required
                   />
                 </div>
 
                 {/* Description */}
-                <div className="space-y-1.5">
-                  <label htmlFor="habit-desc-input" className="text-[10px] font-mono text-text-muted uppercase">Descripción / Meta</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-text-muted">Descripción / Detalle</label>
                   <input
-                    id="habit-desc-input"
                     type="text"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Ej. Beber agua en la mañana y tarde"
-                    className="w-full bg-background-dark border border-border-dark/60 rounded-xl px-3 py-2 text-sm text-foreground focus:border-primary/30 focus:outline-none transition"
+                    placeholder="Ej. 21:45 desconexión · 22:15 dormido"
+                    className="w-full bg-card-hover border border-border-dark/60 rounded-xl px-3.5 py-2.5 text-sm text-foreground focus:border-primary/40 focus:outline-none transition"
                   />
                 </div>
 
-                {/* Habit Type */}
+                {/* Habit Type (3 Tiers) */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-text-muted uppercase block">Tipo de Hábito</span>
-                  <div className="grid grid-cols-2 gap-3">
+                  <span className="text-xs font-medium text-text-muted block">Categoría de Hábito</span>
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setHabitType("good")}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
-                        habitType === "good"
-                          ? "bg-accent-green/10 border-accent-green/30 text-accent-green"
-                          : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
+                      onClick={() => setHabitType("fundamental")}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                        habitType === "fundamental"
+                          ? "bg-accent-rose/15 border-accent-rose/40 text-accent-rose shadow-sm"
+                          : "bg-card-hover border-border-dark/40 text-text-muted hover:text-foreground"
                       }`}
                     >
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Positivo
+                      <Flame className="h-4 w-4 mb-1" />
+                      <span>Fundamental</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setHabitType("bad")}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
-                        habitType === "bad"
-                          ? "bg-accent-rose/10 border-accent-rose/30 text-accent-rose"
-                          : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
+                      onClick={() => setHabitType("maintenance")}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                        habitType === "maintenance"
+                          ? "bg-amber-400/15 border-amber-400/40 text-amber-400 shadow-sm"
+                          : "bg-card-hover border-border-dark/40 text-text-muted hover:text-foreground"
                       }`}
                     >
-                      <ShieldAlert className="h-3.5 w-3.5" />
-                      A Evitar
+                      <ShieldCheck className="h-4 w-4 mb-1" />
+                      <span>Mantenimiento</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHabitType("growth")}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                        habitType === "growth"
+                          ? "bg-accent-green/15 border-accent-green/40 text-accent-green shadow-sm"
+                          : "bg-card-hover border-border-dark/40 text-text-muted hover:text-foreground"
+                      }`}
+                    >
+                      <TrendingUp className="h-4 w-4 mb-1" />
+                      <span>Crecimiento</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Icon */}
+                {/* Icon Grid */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-text-muted uppercase block">Icono</span>
+                  <span className="text-xs font-medium text-text-muted block">Icono</span>
                   <div className="grid grid-cols-9 gap-1.5">
                     {ICONS.map((i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => setIcon(i)}
-                        aria-label={`Seleccionar icono ${i}`}
-                        className={`p-2 rounded-lg border flex items-center justify-center transition cursor-pointer ${
+                        className={`p-2 rounded-xl border flex items-center justify-center transition cursor-pointer ${
                           icon === i
-                            ? "bg-primary/10 border-primary/30 text-primary"
-                            : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
+                            ? "bg-primary/20 border-primary/40 text-primary scale-105"
+                            : "bg-card-hover border-border-dark/40 text-text-muted hover:text-foreground"
                         }`}
                       >
-                        <IconMapper name={i} className="h-3.5 w-3.5" />
+                        <IconMapper name={i} className="h-4 w-4" />
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Color */}
+                {/* Color Picker */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-text-muted uppercase block">Color</span>
-                  <div className="flex gap-2">
+                  <span className="text-xs font-medium text-text-muted block">Color</span>
+                  <div className="flex gap-2 flex-wrap">
                     {COLORS.map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setColor(c)}
-                        aria-label={`Seleccionar color ${c}`}
-                        className="w-5 h-5 rounded-full border border-border-dark/50 flex items-center justify-center transition hover:scale-105 cursor-pointer"
+                        className={`w-6 h-6 rounded-full border border-border-dark/50 flex items-center justify-center transition cursor-pointer ${
+                          color === c ? "ring-2 ring-offset-2 ring-offset-card-dark scale-110" : "opacity-50 hover:opacity-100"
+                        }`}
                         style={{ backgroundColor: c }}
                       >
                         {color === c && <Check className="h-3 w-3 text-background-dark font-black" />}
@@ -447,9 +555,9 @@ export default function HabitsPage() {
                   </div>
                 </div>
 
-                {/* Frecuencia */}
+                {/* Frequency Days */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono text-text-muted uppercase block">Frecuencia</span>
+                  <span className="text-xs font-medium text-text-muted block">Días Activo</span>
                   <div className="grid grid-cols-7 gap-1">
                     {DAYS.map((day) => {
                       const active = daysOfWeek.includes(day.value);
@@ -458,11 +566,10 @@ export default function HabitsPage() {
                           key={day.value}
                           type="button"
                           onClick={() => toggleDay(day.value)}
-                          aria-label={`Activar ${day.label}`}
-                          className={`py-1.5 rounded-lg text-[10px] font-bold font-mono border transition cursor-pointer ${
+                          className={`py-2 rounded-xl text-xs font-bold font-mono border transition cursor-pointer ${
                             active
-                              ? "bg-primary/10 border-primary/30 text-primary"
-                              : "bg-background-dark border-border-dark/50 text-text-muted hover:border-border-dark"
+                              ? "bg-primary/20 border-primary/40 text-primary"
+                              : "bg-card-hover border-border-dark/40 text-text-muted"
                           }`}
                         >
                           {day.label}
@@ -472,12 +579,21 @@ export default function HabitsPage() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-primary text-background-dark font-bold text-xs rounded-xl hover:bg-primary-hover transition mt-2 cursor-pointer"
-                >
-                  {editingHabit ? "Guardar Hábito" : "Crear Hábito"}
-                </button>
+                <div className="flex justify-end gap-2 pt-3 border-t border-border-dark/40">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-text-muted hover:text-foreground text-xs rounded-xl transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 font-semibold text-xs rounded-xl transition cursor-pointer"
+                  >
+                    {editingHabit ? "Guardar Cambios" : "Crear Hábito"}
+                  </button>
+                </div>
               </form>
             </motion.div>
           </div>

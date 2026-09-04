@@ -32,14 +32,17 @@ model HabitLog {
 }
 
 model Task {
-  id        String   @id @default(uuid())
-  text      String
-  completed Boolean  @default(false)
-  priority  String   // "high", "medium", "low"
-  date      String   // Format YYYY-MM-DD
-  createdAt DateTime @default(now())
+  id          String    @id @default(uuid())
+  text        String
+  completed   Boolean   @default(false)
+  priority    String    // "high", "medium", "low"
+  date        String    // Format YYYY-MM-DD
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
 
   @@index([date])
+  @@index([completedAt])
+  @@index([completed])
 }
 
 model StickyNote {
@@ -61,3 +64,71 @@ model DailyReflection {
 
   @@index([date])
 }
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        String   // Format YYYY-MM-DD
+  time        String?  // Format HH:mm
+  color       String   @default("#8B9FCA")
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+model SobrietyTracker {
+  id            String   @id @default(uuid())
+  name          String
+  icon          String   @default("🚭")
+  lastResetDate String   // YYYY-MM-DD — last day the user slipped
+  targetDate    String   // YYYY-MM-DD — goal date (e.g. Dec 31)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ScheduleBlock {
+  id          String   @id @default(uuid())
+  title       String
+  location    String?              // e.g. "Salón A3-201"
+  startTime   String               // HH:mm format e.g. "07:00"
+  endTime     String               // HH:mm format e.g. "08:30"
+  color       String   @default("#8B9FCA")
+  category    String   @default("class") // "class" | "routine" | "personal" | "study"
+  // Recurring: daysOfWeek populated, specificDate null
+  // One-off: daysOfWeek empty, specificDate set
+  daysOfWeek  Int[]                // 0=Sun..6=Sat for recurring blocks
+  specificDate String?             // YYYY-MM-DD for one-time blocks
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([specificDate])
+}
+
+model FocusSession {
+  id              String   @id @default(uuid())
+  subject         String   // e.g. "Álgebra Lineal", "AWS Cloud", "Desarrollo ONYX"
+  durationMinutes Int      // e.g. 25, 50, 90
+  date            String   // YYYY-MM-DD
+  createdAt       DateTime @default(now())
+
+  @@index([date])
+  @@index([subject])
+}
+
+model BossBattle {
+  id           String   @id @default(uuid())
+  title        String   // e.g. "Primer Parcial de Álgebra Lineal"
+  subject      String   // e.g. "Álgebra Lineal", "AWS", "TEC"
+  deadlineDate String   // YYYY-MM-DD
+  deadlineTime String?  // HH:mm format e.g. "14:00"
+  type         String   @default("exam") // "exam" | "project" | "certification"
+  completed    Boolean  @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([deadlineDate])
+  @@index([completed])
+}
+

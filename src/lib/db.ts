@@ -3,13 +3,16 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
 const prismaClientSingleton = () => {
-  // Use DIRECT_URL (direct port 5432) or DATABASE_URL (pooler port 6543)
-  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-  
+  // Use transaction-mode pooler (Port 6543) as primary for fast, scalable serverless connections
+  const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
+
   const pool = new pg.Pool({
     connectionString,
+    max: 10,
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 4000,
   });
-  
+
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 };

@@ -12,10 +12,12 @@ async function generateSecureToken(pin: string): Promise<string> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow static files, login page, robots.txt and login API without check
+  // Allow static files, login page, robots.txt, login API, iCal feed and iOS Shortcuts API without check
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth/login') ||
+    pathname.startsWith('/api/schedule/ical') ||
+    pathname.startsWith('/api/shortcuts') ||
     pathname === '/robots.txt' ||
     pathname.includes('.') ||
     pathname.startsWith('/_next')
@@ -23,6 +25,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // API key auth for Antigravity (external AI assistant)
+  const apiKey = request.headers.get('x-api-key');
+  const expectedApiKey = process.env.ANTIGRAVITY_API_KEY;
+  if (apiKey && expectedApiKey && apiKey === expectedApiKey) {
+    return NextResponse.next();
+  }
+
+  // Standard PIN cookie auth
   const token = request.cookies.get('auth_pin_token')?.value;
   const expectedPIN = process.env.ACCESS_PIN || '3340';
   const expectedToken = await generateSecureToken(expectedPIN);
